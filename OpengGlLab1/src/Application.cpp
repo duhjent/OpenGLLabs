@@ -17,21 +17,17 @@
 std::vector<float> vertices;
 
 VertexBuffer GetVb(std::vector<float> vertices) {
-	float* positions = &vertices[0];
-
-	VertexBuffer vb(positions, vertices.size() * sizeof(float));
-	return vb;
+	return VertexBuffer(&vertices[0], vertices.size() * sizeof(float));
 }
 
 IndexBuffer GetIb(std::vector<float> vertices) {
-	unsigned int size = vertices.size();
 	std::vector<unsigned int> indexes;
-	for (int i = 0; i < size; i++)
+	for (int i = 0; i < vertices.size(); i++)
 	{
 		indexes.push_back(i);
 	}
 
-	return IndexBuffer(&indexes[0], size);
+	return IndexBuffer(&indexes[0], vertices.size());
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -40,8 +36,10 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 		double xpos, ypos;
 		glfwGetCursorPos(window, &xpos, &ypos);
 		std::cout << "Mouse pressed at " << xpos << " " << ypos << std::endl;
-		vertices.push_back(xpos / WINDOW_WIDTH);
-		vertices.push_back(ypos / WINDOW_HEIGHT);
+		float x = -1.0 + 2.0 * (double)xpos / WINDOW_WIDTH;
+		float y = -1.0 - 2.0 * (double)ypos / WINDOW_HEIGHT;
+		vertices.push_back(x);
+		vertices.push_back(y);
 	}
 }
 
@@ -78,15 +76,6 @@ int main(void)
 	}
 
 	{
-		vertices.push_back(0.0f);
-		vertices.push_back(0.0f);
-		vertices.push_back(0.5f);
-		vertices.push_back(0.0f);
-		vertices.push_back(0.0f);
-		vertices.push_back(0.5f);
-		vertices.push_back(0.5f);
-		vertices.push_back(0.5f);
-
 		Shader shader("res/shaders/Basic.shader");
 
 		IndexBuffer ib = GetIb(vertices);
@@ -95,6 +84,9 @@ int main(void)
 		VertexBuffer vb = GetVb(vertices);
 		VertexBufferLayout layout;
 		layout.Push<float>(2);
+		int bindId;
+		glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &bindId);
+		std::cout << "glget main " << bindId << std::endl;
 		va.AddBuffer(vb, layout);
 
 		float r = 0.0f;
@@ -112,16 +104,17 @@ int main(void)
 				step = 0.05f;
 			r += step;
 
-			//IndexBuffer ib = GetIb(vertices);
+			IndexBuffer ib = GetIb(vertices);
 
-			//VertexArray va;
-			//VertexBuffer vb = GetVb(vertices);
-			//VertexBufferLayout layout;
-			//layout.Push<float>(2);
-			//va.AddBuffer(vb, layout);
+			VertexArray va;
+			VertexBuffer vb = GetVb(vertices);
+
+			VertexBufferLayout layout;
+			layout.Push<float>(2);
+			va.AddBuffer(vb, layout);
 
 			renderer.Draw(va, ib, shader);
-			shader.SetUniform4f("u_Color", r, 0.5, 1.0, 1.0);
+			shader.SetUniform4f("u_Color", 1, 1, 1, 1.0);
 			
 			/* Swap front and back buffers */
 			glfwSwapBuffers(window);
