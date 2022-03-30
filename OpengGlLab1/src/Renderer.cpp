@@ -16,6 +16,10 @@ bool GLPrintErr(const char* functionCall, const char* file, int line) {
 	return isOk;
 }
 
+Renderer::Renderer(unsigned int mode) : m_Mode(mode)
+{
+}
+
 void Renderer::Clear() {
 	GLCall(glClear(GL_COLOR_BUFFER_BIT));
 }
@@ -25,5 +29,5 @@ void Renderer::Draw(const VertexArray& va, const IndexBuffer& ib, const Shader& 
 	shader.Bind();
 	va.Bind();
 	ib.Bind();
-	GLCall(glDrawElements(GL_POINTS, ib.GetCount(), GL_UNSIGNED_INT, nullptr));
+	GLCall(glDrawElements(m_Mode, ib.GetCount(), GL_UNSIGNED_INT, nullptr));
 }

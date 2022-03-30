@@ -24,24 +24,24 @@ public:
 	VertexBufferLayout() : m_Stride(0) {}
 
 	template<typename T>
-	void Push(unsigned int count) {
+	void Push(unsigned int count, bool normalized = false) {
 		static_assert(false);
 	}
 
 	template<>
-	void Push<float>(unsigned int count) {
-		m_Elements.push_back({ GL_FLOAT, count, false });
+	void Push<float>(unsigned int count, bool normalized) {
+		m_Elements.push_back({ GL_FLOAT, count, normalized });
 		m_Stride += sizeof(float) * count;
 	}
 
 	template<>
-	void Push<unsigned int>(unsigned int count) {
-		m_Elements.push_back({ GL_UNSIGNED_INT, count, false });
+	void Push<unsigned int>(unsigned int count, bool normalized) {
+		m_Elements.push_back({ GL_UNSIGNED_INT, count, normalized });
 		m_Stride += sizeof(unsigned int) * count;
 	}
 
 	template<>
-	void Push<unsigned char>(unsigned int count) {
+	void Push<unsigned char>(unsigned int count, bool normalized) {
 		m_Elements.push_back({ GL_UNSIGNED_BYTE, count, true });
 		m_Stride += sizeof(unsigned char) * count;
 	}

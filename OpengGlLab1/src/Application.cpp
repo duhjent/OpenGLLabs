@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 
 #include "Renderer.h"
 #include "VertexBuffer.h"
@@ -13,14 +14,36 @@
 
 #define WINDOW_WIDTH 640
 #define WINDOW_HEIGHT 480
+#define COLOR_STEP 0.15f
 
-std::vector<float> vertices;
+struct Vertex {
+	float coordinates[2];
+	float color[4];
+	float pointSize;
+};
 
-VertexBuffer GetVb(std::vector<float> vertices) {
-	return VertexBuffer(&vertices[0], vertices.size() * sizeof(float));
+std::vector<Vertex> vertices;
+float r_step = COLOR_STEP;
+float r = 1;
+float g_step = COLOR_STEP;
+float g = 1;
+float b_step = COLOR_STEP;
+float b = 1;
+
+float point_size = 3;
+float point_size_step = 0.2;
+
+VertexBuffer GetVb(std::vector<Vertex> vertices) {
+	if (vertices.size() != 0) {
+		return VertexBuffer(&vertices[0], vertices.size() * sizeof(Vertex));
+	}
+	return VertexBuffer(nullptr, 0);
 }
 
-IndexBuffer GetIb(std::vector<float> vertices) {
+IndexBuffer GetIb(std::vector<Vertex> vertices) {
+	if (vertices.size() == 0) {
+		return IndexBuffer(nullptr, 0);
+	}
 	std::vector<unsigned int> indexes;
 	for (int i = 0; i < vertices.size(); i++)
 	{
@@ -30,18 +53,47 @@ IndexBuffer GetIb(std::vector<float> vertices) {
 	return IndexBuffer(&indexes[0], vertices.size());
 }
 
+int sign(double val) {
+	return (val > 0) - (val < 0);
+}
+
+void CalculateColorChanel(float& color, float& delta) {
+	if (color > 1.0)
+		delta = -COLOR_STEP;
+	if (color < 0.0)
+		delta = COLOR_STEP;
+	color += delta;
+}
+
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
 		double xpos, ypos;
 		glfwGetCursorPos(window, &xpos, &ypos);
-		std::cout << "Mouse pressed at " << xpos << " " << ypos << std::endl;
 		float x = -1.0 + 2.0 * (double)xpos / WINDOW_WIDTH;
-		float y = -1.0 - 2.0 * (double)ypos / WINDOW_HEIGHT;
-		vertices.push_back(x);
-		vertices.push_back(y);
+		float y = 1.0 - 2.0 * (double)ypos / WINDOW_HEIGHT;
+		Vertex v = { {x, y}, {r, g, b, 1}, point_size };
+		vertices.push_back(v);
 	}
 }
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && vertices.size() >= 1)
+		vertices.resize(vertices.size() - 1);
+	if (key == GLFW_KEY_R && action == GLFW_PRESS)
+		CalculateColorChanel(r, r_step);
+	if (key == GLFW_KEY_G && action == GLFW_PRESS)
+		CalculateColorChanel(g, g_step);
+	if (key == GLFW_KEY_B && action == GLFW_PRESS)
+		CalculateColorChanel(b, b_step);
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	point_size = std::max(0.0f, point_size + point_size_step * sign(yoffset));
+}
+
 
 int main(void)
 {
@@ -56,7 +108,7 @@ int main(void)
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	/* Create a windowed mode window and its OpenGL context */
-	window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Hello World", NULL, NULL);
+	window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Lab1", NULL, NULL);
 	if (!window)
 	{
 		glfwTerminate();
@@ -67,8 +119,8 @@ int main(void)
 	glfwMakeContextCurrent(window);
 
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
-
-	glfwSwapInterval(1);
+	glfwSetKeyCallback(window, key_callback);
+	glfwSetScrollCallback(window, scroll_callback);
 
 	GLenum glewRes = glewInit();
 	if (glewRes != GLEW_OK) {
@@ -76,46 +128,29 @@ int main(void)
 	}
 
 	{
+		glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+
 		Shader shader("res/shaders/Basic.shader");
 
-		IndexBuffer ib = GetIb(vertices);
-
-		VertexArray va;
-		VertexBuffer vb = GetVb(vertices);
 		VertexBufferLayout layout;
 		layout.Push<float>(2);
-		int bindId;
-		glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &bindId);
-		std::cout << "glget main " << bindId << std::endl;
-		va.AddBuffer(vb, layout);
+		layout.Push<float>(4);
+		layout.Push<float>(1, true);
 
-		float r = 0.0f;
-		float step = 0.05f;
-		Renderer renderer;
+		Renderer renderer(GL_POINTS);
 		/* Loop until the user closes the window */
 		while (!glfwWindowShouldClose(window))
 		{
 			/* Render here */
 			renderer.Clear();
 
-			if (r > 1.0)
-				step = -0.05f;
-			if (r < 0.0)
-				step = 0.05f;
-			r += step;
-
 			IndexBuffer ib = GetIb(vertices);
-
 			VertexArray va;
 			VertexBuffer vb = GetVb(vertices);
-
-			VertexBufferLayout layout;
-			layout.Push<float>(2);
 			va.AddBuffer(vb, layout);
 
 			renderer.Draw(va, ib, shader);
-			shader.SetUniform4f("u_Color", 1, 1, 1, 1.0);
-			
+
 			/* Swap front and back buffers */
 			glfwSwapBuffers(window);
 

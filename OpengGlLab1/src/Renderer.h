@@ -15,7 +15,10 @@ void GLClearErr();
 bool GLPrintErr(const char* functionCall, const char* file, int line);
 
 class Renderer {
+	unsigned int m_Mode;
 public:
+	Renderer(unsigned int mode);
+
 	void Clear();
 	void Draw(const VertexArray& va, const IndexBuffer& ib, const Shader& shader) const;
 };
