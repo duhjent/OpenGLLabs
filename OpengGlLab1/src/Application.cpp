@@ -11,27 +11,11 @@
 #include "IndexBuffer.h"
 #include "VertexArray.h"
 #include "Shader.h"
+#include "Vertex.h"
+#include "ApplicationState.h"
 
 #define WINDOW_WIDTH 640
 #define WINDOW_HEIGHT 480
-#define COLOR_STEP 0.15f
-
-struct Vertex {
-	float coordinates[2];
-	float color[4];
-	float pointSize;
-};
-
-std::vector<Vertex> vertices;
-float r_step = COLOR_STEP;
-float r = 1;
-float g_step = COLOR_STEP;
-float g = 1;
-float b_step = COLOR_STEP;
-float b = 1;
-
-float point_size = 3;
-float point_size_step = 0.2;
 
 VertexBuffer GetVb(std::vector<Vertex> vertices) {
 	if (vertices.size() != 0) {
@@ -53,18 +37,6 @@ IndexBuffer GetIb(std::vector<Vertex> vertices) {
 	return IndexBuffer(&indexes[0], vertices.size());
 }
 
-int sign(double val) {
-	return (val > 0) - (val < 0);
-}
-
-void CalculateColorChanel(float& color, float& delta) {
-	if (color > 1.0)
-		delta = -COLOR_STEP;
-	if (color < 0.0)
-		delta = COLOR_STEP;
-	color += delta;
-}
-
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
@@ -72,28 +44,28 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 		glfwGetCursorPos(window, &xpos, &ypos);
 		float x = -1.0 + 2.0 * (double)xpos / WINDOW_WIDTH;
 		float y = 1.0 - 2.0 * (double)ypos / WINDOW_HEIGHT;
-		Vertex v = { {x, y}, {r, g, b, 1}, point_size };
-		vertices.push_back(v);
+		ApplicationState::GetInstance().AddVertexOnCoordinates(x, y);
 	}
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && vertices.size() >= 1)
-		vertices.resize(vertices.size() - 1);
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+		ApplicationState::GetInstance().UndoLastVertice();
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+		ApplicationState::GetInstance().ClearVertices();
 	if (key == GLFW_KEY_R && action == GLFW_PRESS)
-		CalculateColorChanel(r, r_step);
+		ApplicationState::GetInstance().ColorChanged(ColorChannel::RED);
 	if (key == GLFW_KEY_G && action == GLFW_PRESS)
-		CalculateColorChanel(g, g_step);
+		ApplicationState::GetInstance().ColorChanged(ColorChannel::GREEN);
 	if (key == GLFW_KEY_B && action == GLFW_PRESS)
-		CalculateColorChanel(b, b_step);
+		ApplicationState::GetInstance().ColorChanged(ColorChannel::BLUE);
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	point_size = std::max(0.0f, point_size + point_size_step * sign(yoffset));
+	ApplicationState::GetInstance().SizeChanged(yoffset);
 }
-
 
 int main(void)
 {
@@ -122,7 +94,7 @@ int main(void)
 	glfwSetKeyCallback(window, key_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 
-	GLenum glewRes = glewInit();
+	unsigned int glewRes = glewInit();
 	if (glewRes != GLEW_OK) {
 		return -1;
 	}
@@ -132,21 +104,19 @@ int main(void)
 
 		Shader shader("res/shaders/Basic.shader");
 
-		VertexBufferLayout layout;
-		layout.Push<float>(2);
-		layout.Push<float>(4);
-		layout.Push<float>(1, true);
+		VertexBufferLayout layout = Vertex::GetLayout();
 
 		Renderer renderer(GL_POINTS);
+
 		/* Loop until the user closes the window */
 		while (!glfwWindowShouldClose(window))
 		{
 			/* Render here */
 			renderer.Clear();
 
-			IndexBuffer ib = GetIb(vertices);
 			VertexArray va;
-			VertexBuffer vb = GetVb(vertices);
+			IndexBuffer ib = GetIb(ApplicationState::GetInstance().GetVertices());
+			VertexBuffer vb = GetVb(ApplicationState::GetInstance().GetVertices());
 			va.AddBuffer(vb, layout);
 
 			renderer.Draw(va, ib, shader);
